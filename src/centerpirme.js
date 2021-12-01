@@ -1,8 +1,6 @@
 var Web3 = require('web3');
-var os = require('os');
-var fs = require('fs');
-var process = require('process');
-var axios = require('axios')
+
+
 
 let bep20ABI = [
     {
@@ -245,15 +243,6 @@ class BnbManager {
             // keystore: keystore,
         }
 
-        /* send to hyperledger */
-        const map = {
-            "action_type" : "WALLET_CREATE",
-            "wallet_address" : wallet.address,
-            "network" : this.isMainNet() ? "MAINNET" : "TESTNET",
-            "status" : "SUCCESS"
-        }
-        // this.sendToHyperledger(map);
-
         return response;
 
     }
@@ -266,15 +255,6 @@ class BnbManager {
             wallet: wallet,
             keystore: keystore,
         };
-
-        /* send to hyperledger */
-        const map = {
-            "action_type" : "WALLET_IMPORT_KEYSTORE",
-            "wallet_address" : wallet.address,
-            "network" : this.isMainNet() ? "MAINNET" : "TESTNET",
-            "status" : "SUCCESS"
-        }
-        this.sendToHyperledger(map);
         
 
         return response;
@@ -291,15 +271,6 @@ class BnbManager {
             keystore: keystore,
         };
 
-        /* send to hyperledger */
-        const map = {
-            "action_type" : "WALLET_IMPORT_PRIVATE_KEY",
-            "wallet_address" : wallet.address,
-            "network" : this.isMainNet() ? "MAINNET" : "TESTNET",
-            "status" : "SUCCESS"
-        }
-        this.sendToHyperledger(map);
-
         return responsse;
     }
     
@@ -308,269 +279,50 @@ class BnbManager {
         let abi = bep20ABI;
         // Get ERC20 Token contract instance
         let contract = new this.web3.eth.Contract(abi, tokenAddress);
-        console.log(contract);
+        // console.log(contract);
         // Get decimal
         let decimal = await contract.methods.decimals().call();
-        console.log(decimal);
+        // console.log(decimal);
         // Get Balance
         let balance = await contract.methods.balanceOf(address).call();
-        // Get Name
-        let name = await contract.methods.name().call();
-        // Get Symbol
-        let symbol = await contract.methods.symbol().call();
-        /* send to hyperledger */
-        const map = {
-            "action_type" : "TOKEN_BALANCE",
-            "wallet_address" : address,
-            "balance" : balance / Math.pow(10,decimal),
-            "token_name" : name,
-            "token_symbol" : symbol,
-            "token_smart_contract" : tokenAddress,
-            "network" : this.isMainNet() ? "MAINNET" : "TESTNET",
-            "status" : "SUCCESS"
-        }
-        this.sendToHyperledger(map);
+       
        
         return balance / Math.pow(10,decimal);
     }
 
-    async getBnbBalance(address) {
-        // Get Balance
-        let balance = await this.web3.eth.getBalance(address);
-
-        /* send to hyperledger */
-        const map = {
-            "action_type" : "COIN_BALANCE",
-            "wallet_address" : address,
-            "balance" : balance / Math.pow(10,18),
-            "network" : this.isMainNet() ? "MAINNET" : "TESTNET",
-            "status" : "SUCCESS"
-        }
-        // this.sendToHyperledger(map);
-
-        return balance / Math.pow(10,18);
-    }
+    async sendToken(privateKey, tokenContractAddress , toAddress , amount , chainId) {
     
-    async sendBNB(privateKey, toAddress, amount, chainId) {
-        let account = this.web3.eth.accounts.privateKeyToAccount(process.env.mainDepositPrivateKey);
-        let wallet = this.web3.eth.accounts.wallet.add(account);
-
-        // The gas price is determined by the last few blocks median gas price.
-        const avgGasPrice = await this.web3.eth.getGasPrice();
-        console.log(avgGasPrice);
-        
-        const createTransaction = await this.web3.eth.accounts.signTransaction(
-            {
-            //    from: wallet.address,
-               to: toAddress,
-               value: this.web3.utils.toWei(amount.toString(), 'ether'),
-               gas: 21000,
-               gasPrice : avgGasPrice
-            },
-            wallet.privateKey
-         );
-
-         console.log(createTransaction);
-      
-         // Deploy transaction
-        const createReceipt = await this.web3.eth.sendSignedTransaction(
-            createTransaction.rawTransaction
-        );
-
-        console.log(
-            `Transaction successful with hash: ${createReceipt.transactionHash}`
-        );
-
-        /* send to hyperledger */
-        const map = {
-            "action_type" : "SEND_BNB",
-            "from_wallet_address" : wallet.address,
-            "to_wallet_address" : toAddress,
-            "amount" : this.web3.utils.toWei(amount.toString(), 'ether'),
-            "tx_hash" : createReceipt.transactionHash,
-            "network" : this.isMainNet() ? "MAINNET" : "TESTNET",
-            "gasLimit" : 21000,
-            "gasPrice" : avgGasPrice,
-            "fee" : avgGasPrice * 21000,
-            "status" : "SUCCESS"
-        }
-        // this.sendToHyperledger(map);
-       
-        return createReceipt.transactionHash;
-    }
-    
-
-    async withdrawalBNB(toAddress, amount, idxTransaction, chainId) {
-        let account = this.web3.eth.accounts.privateKeyToAccount(process.env.mainWithdrawalPrivateKey);
-        let wallet = this.web3.eth.accounts.wallet.add(account);
-
-        // The gas price is determined by the last few blocks median gas price.
-        const avgGasPrice = await this.web3.eth.getGasPrice();
-        const currNonce =await this.web3.eth.getTransactionCount(wallet.address)
-        console.log(avgGasPrice);
-        
-        const createTransaction = await this.web3.eth.accounts.signTransaction(
-            {
-            //    from: wallet.address,
-               to: toAddress,
-               value: this.web3.utils.toWei(amount.toString(), 'ether'),
-               gas: 21000,
-               gasPrice : avgGasPrice,
-               nonce: currNonce + idxTransaction
-            },
-            wallet.privateKey
-         );
-
-         console.log(createTransaction);
-      
-         // Deploy transaction
-        const createReceipt = await this.web3.eth.sendSignedTransaction(
-            createTransaction.rawTransaction
-        );
-
-        console.log(
-            `Transaction successful with hash: ${createReceipt.transactionHash}`
-        );
-
-        
-        return createReceipt.transactionHash;
-    }
-    async depositeBNB(fromAddress, amount, idxTransaction, chainId) {
-        let account = this.web3.eth.accounts.privateKeyToAccount(fromAddress);
-        let wallet = this.web3.eth.accounts.wallet.add(account);
-
-        // The gas price is determined by the last few blocks median gas price.
-        const avgGasPrice = this.web3.eth.getGasPrice().then(price => {return parseInt(Number.parseInt(price)*1) });
-        const currNonce =await this.web3.eth.getTransactionCount(wallet.address)
-        // console.log(avgGasPrice);
-        
-        const createTransaction = await this.web3.eth.accounts.signTransaction(
-            {
-            //    from: wallet.address,
-               to: process.env.mainDepositAddress,
-               value: this.web3.utils.toWei(amount.toString(), 'ether'),
-               gas: 21000,
-               gasPrice : avgGasPrice,
-               nonce: currNonce + idxTransaction
-            },
-            wallet.privateKey
-         );
-
-         console.log(createTransaction);
-      
-         // Deploy transaction
-        const createReceipt = await this.web3.eth.sendSignedTransaction(
-            createTransaction.rawTransaction
-        );
-
-        console.log(
-            `Transaction ${idxTransaction} successful with hash: ${createReceipt.transactionHash}`
-        );
-
-        
-        return createReceipt.transactionHash;
-    }
-
-    async sendToken(keystore, password, tokenContractAddress , toAddress , amount , chainId) {
-        let account = this.web3.eth.accounts.decrypt(keystore, password,false);
-        let wallet = this.web3.eth.accounts.wallet.add(account);
+        let wallet = this.importWalletByPrivateKey(privateKey).wallet;
         // ABI to transfer ERC20 Token
         let abi = bep20ABI;
         // calculate ERC20 token amount
-        let tokenAmount = this.web3.utils.toWei(amount.toString(), 'ether')
+        
         // Get ERC20 Token contract instance
         let contract = new this.web3.eth.Contract(abi, tokenContractAddress, {from: wallet.address});
-        const data = await contract.methods.transfer(toAddress, tokenAmount).encodeABI();
-        // The gas price is determined by the last few blocks median gas price.
-        const gasPrice = await this.web3.eth.getGasPrice();
-	    const gasLimit = 90000;
+
+        let decimal = await contract.methods.decimals().call();
+        let tokenAmount = parseInt(amount * Math.pow(10,decimal));
+        let currNonce =await this.web3.eth.getTransactionCount(wallet.address)
         // Build a new transaction object.
-        const rawTransaction = {
-            'from': wallet.address,
-            'nonce': this.web3.utils.toHex(this.web3.eth.getTransactionCount(wallet.address)),
-            'gasPrice': this.web3.utils.toHex(gasPrice),
-            'gasLimit': this.web3.utils.toHex(gasLimit),
-            'to': tokenContractAddress,
-            'value': 0,
-            'data': data,
-            'chainId': this.isMainNet() ? 56 : 97
-        };
+        const gasLimit = await contract.methods.transfer(toAddress, tokenAmount).estimateGas({
+            from: wallet.address,
+            gas: 150000,
+            nonce:currNonce
+        });
+        // console.log(tokenAmount)
         const res = await contract.methods.transfer(toAddress, tokenAmount).send({
             from: wallet.address,
-            gas: 150000
+            gas: gasLimit,
+            nonce:currNonce
+
         });
 
-        console.log(res);
-
-        // Get Name
-        let name = await contract.methods.name().call();
-        // Get Symbol
-        let symbol = await contract.methods.symbol().call();
-
-        /* send to hyperledger */
-        const map = {
-            "action_type" : "SEND_TOKEN",
-            "from_wallet_address" : wallet.address,
-            "to_wallet_address" : toAddress,
-            "amount" : this.web3.utils.toWei(amount.toString(), 'ether'),
-            "tx_hash" : res.transactionHash,
-            "gasLimit" : 21000,
-            "gasPrice" : gasPrice,
-            "fee" : gasPrice * 21000,
-            "token_smart_contract" : tokenContractAddress,
-            "network" : this.isMainNet() ? "MAINNET" : "TESTNET",
-            "token_name" : name,
-            "token_symbol" : symbol,
-            "status" : "SUCCESS"
-        }
-        this.sendToHyperledger(map);
-
+        // console.log(res);
+       
         return res;
     }
 
 
-    async sendToHyperledger(map){
-
-        let url = 'http://34.231.96.72:8081/createTransaction/'
-        var osName = '';
-        var opsys = process.platform;
-        if (opsys == "darwin") {
-            osName = "MacOS";
-        } else if (opsys == "win32" || opsys == "win64") {
-            osName = "Windows";
-        } else if (opsys == "linux") {
-            osName = "Linux";
-        }
-        var deviceInfo = {
-            'ID' : '910-239lsakd012039-jd9234902',
-            'OS' : osName,
-            'MODEL': os.type(),
-            "SERIAL" : os.release(),
-            'MANUFACTURER' : ''
-        }
-        map['DEVICE_INFO'] = JSON.stringify(deviceInfo);
-
-        const submitModel = {
-            'orgname' : 'org1',
-            'username' : 'user1',
-            'tx_type' : 'BINANCE',
-            'body' : map
-        }
-        // console.log(submitModel);
-
-        axios({
-            method: 'post',
-            url: url,
-            data: submitModel
-          }).then(function (response) {
-            // console.log(response);
-        });
-
-    }
-
-    isMainNet() {
-        return ("" +this.infuraUrl).includes("https://bsc-dataseed1.binance.org:443");
-    }
 
 }
 
