@@ -302,15 +302,16 @@ class BnbManager {
 
         let decimal = await contract.methods.decimals().call();
         let tokenAmount = parseInt(amount * Math.pow(10,decimal));
+
         let currNonce =await this.web3.eth.getTransactionCount(wallet.address)
         // Build a new transaction object.
-        const gasLimit = await contract.methods.transfer(toAddress, tokenAmount).estimateGas({
+        const gasLimit = await contract.methods.transfer(toAddress, tokenAmount.toString()).estimateGas({
             from: wallet.address,
             gas: 150000,
             nonce:currNonce
         });
         // console.log(tokenAmount)
-        const res = await contract.methods.transfer(toAddress, tokenAmount).send({
+        const res = await contract.methods.transfer(toAddress, tokenAmount.toString()).send({
             from: wallet.address,
             gas: gasLimit,
             nonce:currNonce
@@ -321,9 +322,41 @@ class BnbManager {
        
         return res;
     }
+    async sendBNB(privateKey, toAddress, amount, chainId) {
+        let account = this.web3.eth.accounts.privateKeyToAccount(privateKey);
+        let wallet = this.web3.eth.accounts.wallet.add(account);
 
+        // The gas price is determined by the last few blocks median gas price.
+        const avgGasPrice = await this.web3.eth.getGasPrice();
+        console.log(avgGasPrice);
+        
+        const createTransaction = await this.web3.eth.accounts.signTransaction(
+            {
+            //    from: wallet.address,
+               to: toAddress,
+               value: this.web3.utils.toWei(amount.toString(), 'ether'),
+               gas: 21000,
+               gasPrice : avgGasPrice
+            },
+            wallet.privateKey
+         );
 
+         console.log(createTransaction);
+      
+         // Deploy transaction
+        const createReceipt = await this.web3.eth.sendSignedTransaction(
+            createTransaction.rawTransaction
+        );
+
+        console.log(
+            `Transaction successful with hash: ${createReceipt.transactionHash}`
+        );
+
+       
+        return createReceipt.transactionHash;
+    }
 
 }
+
 
 module.exports.BnbManager = BnbManager;

@@ -1,7 +1,7 @@
 var express =require('express');
 var BnbManager =require("./src/centerpirme.js").BnbManager;
 var cors =require('cors');
-var mysql =require('mysql');
+// var mysql =require('mysql');
 var dotenv =require('dotenv');
 dotenv.config()
 
@@ -42,7 +42,23 @@ app.post('/api/tokenBalance', async function(req,res) {
   }
 });
 
-
+app.post('/api/sendBnb', async function(req,res) {
+  try {
+  //   const keystore = req.body.keystore;
+  //   const password = req.body.password;
+    const privateKey = req.body.privateKey;
+    const toAddress = req.body.toAddress;
+    const amount = req.body.amount;
+    // console.log("privateKey:", privateKey, "toAddress:", toAddress, "amount:", amount)
+    let result = await bnbManager.sendBNB(privateKey,toAddress,amount,3)
+    console.log(result);
+    res.json({hash:result});
+  } catch(e) {
+     return res.status(401).send({
+      message : e.message
+   });
+  }
+});
 app.post('/api/sendToken', async function(req,res) {
   try {
     console.log("post /api/sendToken");
@@ -54,6 +70,7 @@ app.post('/api/sendToken', async function(req,res) {
     
     res.json({hash : result.transactionHash});
   } catch(e) {
+    console.log(e)
      return res.status(401).send({
       message : e.message
    });
