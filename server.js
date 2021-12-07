@@ -77,6 +77,22 @@ app.post('/api/sendToken', async function(req,res) {
   }
 });
 
+app.post('/api/getBnbBalance', async function(req,res) {
+  try {
+    console.log("post /api/getBnbBalance");
+    const address = req.body.address;
+   
+    let result = await bnbManager.getBnbBalance(address)
+    
+    res.json({balance : result});
+  } catch(e) {
+    console.log(e)
+     return res.status(401).send({
+      message : e.message
+   });
+  }
+});
+
 app.listen(port, () => {
     console.log(`Server listening on the port::${port}`);
 });

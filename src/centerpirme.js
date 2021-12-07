@@ -273,7 +273,15 @@ class BnbManager {
 
         return responsse;
     }
-    
+    async getBnbBalance(address) {
+        // Get Balance
+        let balance = await this.web3.eth.getBalance(address);
+        // console.log(balance)
+
+        
+
+        return balance / Math.pow(10,18);
+    }
     async getBEPTokenBalance(tokenAddress , address) {
         // ABI to transfer ERC20 Token
         let abi = bep20ABI;
