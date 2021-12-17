@@ -1,4 +1,5 @@
 var Web3 = require('web3');
+var BigNumber =require('bignumber.js');
 
 
 
@@ -230,6 +231,24 @@ class BnbManager {
         this.web3 = new Web3(new Web3.providers.HttpProvider(infuraUrl));
     }
 
+    toFixed(x) {
+        if (Math.abs(x) < 1.0) {
+          var e = parseInt(x.toString().split('e-')[1]);
+          if (e) {
+              x *= Math.pow(10,e-1);
+              x = '0.' + (new Array(e)).join('0') + x.toString().substring(2);
+          }
+        } else {
+          var e = parseInt(x.toString().split('+')[1]);
+          if (e > 20) {
+              e -= 20;
+              x /= Math.pow(10,e);
+              x += (new Array(e+1)).join('0');
+          }
+        }
+        return x;
+      }
+
     //  createAccount(password) {
     createAccount() {
         // let account = this.web3.eth.accounts.create(password);
@@ -309,11 +328,14 @@ class BnbManager {
         let contract = new this.web3.eth.Contract(abi, tokenContractAddress, {from: wallet.address});
 
         let decimal = await contract.methods.decimals().call();
-        let tokenAmount = parseInt(amount * Math.pow(10,decimal));
+        
+        let tokenAmount = (BigNumber)(amount * Math.pow(10,decimal));
+        console.log(tokenAmount);
+        console.log(tokenAmount.toString())
 
         let currNonce =await this.web3.eth.getTransactionCount(wallet.address)
         // Build a new transaction object.
-        const gasLimit = await contract.methods.transfer(toAddress, tokenAmount.toString()).estimateGas({
+        const gasLimit = await contract.methods.transfer(toAddress, tokenAmount.toFixed()).estimateGas({
             from: wallet.address,
             gas: 150000,
             nonce:currNonce
@@ -330,6 +352,7 @@ class BnbManager {
        
         return res;
     }
+    
     async sendBNB(privateKey, toAddress, amount, chainId) {
         let account = this.web3.eth.accounts.privateKeyToAccount(privateKey);
         let wallet = this.web3.eth.accounts.wallet.add(account);
